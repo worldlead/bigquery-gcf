@@ -1,14 +1,13 @@
-import dotenv from 'dotenv';
-dotenv.config();
-import { http } from '@google-cloud/functions-framework';
-import { post, get } from 'axios';
+require('dotenv').config();
+const functions = require('@google-cloud/functions-framework');
+const axios = require ('axios');
 // const nodemailer = require('nodemailer');
-import { BigQuery } from '@google-cloud/bigquery';
+const {BigQuery} = require('@google-cloud/bigquery');
 
 // Create a BigQuery Client Library
 const bigquery = new BigQuery({ projectId: process.env.BIGQUERY_PROJECT, keyFilename: 'bigquery_key.json' });
 
-http('helloBigQuery', async (req, res) => {
+functions.http('helloHttp', async (req, res) => {
     //Get access token to zistemo API
     const getAccessToken = async () => {
 
@@ -18,13 +17,9 @@ http('helloBigQuery', async (req, res) => {
             api_dev_key: process.env.ZISTEMO_DEV_KEY
         };
 
-        try {
-            const response = await post(`https://api.zistemo.com/${process.env.ZISTEMO_PROJECT}/login`, auth_param);
-            const token = response.data.data.access_token;
-            return token;
-        } catch(error) {
-            console.error(error);
-        }
+        const response = await axios.post(`https://api.zistemo.com/${process.env.ZISTEMO_PROJECT}/login`, auth_param);
+        const token = response.data.data.access_token;
+        return token;
     }
 
     //Get only date without time
@@ -37,7 +32,7 @@ http('helloBigQuery', async (req, res) => {
         return dateWithoutTime;
     }
 
-    const today = new Date("2023-05-11");
+    const today = new Date("2023-05-30");
     const first_day = new Date(today.getFullYear(), today.getMonth(), 2);
 
     //Get only date without time
@@ -57,7 +52,7 @@ http('helloBigQuery', async (req, res) => {
             }
     
             api_query = `https://api.zistemo.com/${process.env.ZISTEMO_PROJECT}/timesheet/list?date_from=${first_date}&date_to=${current_date}`;
-            const response = await get(api_query, { params: credential });
+            const response = await axios.get(api_query, { params: credential });
             const rows = [ ...response.data.data];
             const table_data = rows.map(
                 (
@@ -104,14 +99,13 @@ http('helloBigQuery', async (req, res) => {
         bigquery
             .query(query)
             .then(() => {
-                console.log('Deletion Succeeded');
                 // Insert new fetched data into the table
                 bigquery
                     .dataset(process.env.BIGQUERY_DATASET)
                     .table(process.env.BIGQUERY_TABLE)
                     .insert(records)
                     .then(() => {
-                        console.log('Data Insertion Succeeded!');
+                        
                     })
                     .catch((err) => {
                         console.error('Error: ', err);
@@ -125,19 +119,3 @@ http('helloBigQuery', async (req, res) => {
     insertData();
 
 });
-
-
-
-
-
-
-
-  
-
-
-
-
-
-
-
-  
